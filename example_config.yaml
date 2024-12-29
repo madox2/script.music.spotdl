@@ -1,0 +1,8 @@
+directories:
+  - name: "My Favorite Songs"
+    queries:
+      - "https://open.spotify.com/playlist/YOUR_PLAYLIST_ID"
+      - "https://open.spotify.com/track/YOUR_TRACK_ID"
+  - name: "Rock Collection"
+    queries:
+      - "https://open.spotify.com/album/YOUR_ALBUM_ID"
