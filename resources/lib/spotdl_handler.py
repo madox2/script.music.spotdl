@@ -178,8 +178,15 @@ class SpotDLHandler:
                 
                 xbmc.log(f"SpotDL: Finished all queries in {dir_path}", xbmc.LOGINFO)
             
+            # Count total files in all processed directories
+            total_files = 0
+            for dir_entry in self.directories:
+                dir_path = os.path.join(self.download_path, dir_entry['name'])
+                if os.path.exists(dir_path):
+                    total_files += len([f for f in os.listdir(dir_path) if os.path.isfile(os.path.join(dir_path, f))])
+            
             # Log the final summary
-            summary = f"Downloaded: {total_downloaded}\nSkipped: {total_skipped}\nFailed: {total_failed}"
+            summary = f"Downloaded: {total_downloaded}, Skipped: {total_skipped}, Failed: {total_failed}\nTotal Files: {total_files}"
             xbmc.log(f"SpotDL download summary: {summary}", xbmc.LOGINFO)
             
             # Show updating library notification
@@ -198,8 +205,8 @@ class SpotDLHandler:
                 if not xbmc.getCondVisibility('Library.IsScanningMusic'):
                     break
             
-            dialog.notification('SpotDL', f'Library updated', xbmcgui.NOTIFICATION_INFO, 2000)
-            dialog.ok('SpotDL', f'Synchronization finished\n{summary}')
+            dialog.notification('SpotDL', 'Library updated', xbmcgui.NOTIFICATION_INFO, 2000)
+            dialog.ok('SpotDL - Complete', summary)
             return True
             
         except Exception as e:
