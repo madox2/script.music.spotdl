@@ -134,7 +134,7 @@ class SpotDLHandler:
                     # Monitor directory while process is running
                     while process.poll() is None:
                         # Count files in current directory
-                        file_count = len([f for f in os.listdir(dir_path) if os.path.isfile(os.path.join(dir_path, f))])
+                        file_count = len([f for f in os.listdir(dir_path) if os.path.isfile(os.path.join(dir_path, f)) and not f.endswith('.spotdl')])
                         # Update notification
                         dialog.notification('SpotDL',
                                        f'Sync {index}/{total_dirs}: {dir_entry["name"]} (files: {file_count})',
@@ -201,7 +201,9 @@ class SpotDLHandler:
             for dir_entry in self.directories:
                 dir_path = os.path.join(self.download_path, dir_entry['name'])
                 if os.path.exists(dir_path):
-                    total_files += len([f for f in os.listdir(dir_path) if os.path.isfile(os.path.join(dir_path, f))])
+                    total_files += len([f for f in os.listdir(dir_path) 
+                                      if os.path.isfile(os.path.join(dir_path, f)) 
+                                      and not f.endswith('.spotdl')])
             
             # Log the final summary
             summary = f"Downloaded: {total_downloaded}, Skipped: {total_skipped}, Failed: {total_failed}\nTotal Files: {total_files}"
