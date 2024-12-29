@@ -114,67 +114,67 @@ class SpotDLHandler:
             for index, dir_entry in enumerate(self.directories, 1):
                 dir_path = os.path.join(self.download_path, dir_entry['name'])
                 queries = dir_entry['queries']
-                total_queries = len(queries)
+                xbmc.log(f"SpotDL: Processing directory {dir_path} with {len(queries)} queries", xbmc.LOGINFO)
                 
-                xbmc.log(f"SpotDL: Processing directory {dir_path} with {total_queries} queries", xbmc.LOGINFO)
-                
-                # Change to the directory for all queries
+                # Change to the directory for processing
                 os.chdir(dir_path)
                 
-                for query_index, query in enumerate(queries, 1):
-                    xbmc.log(f"SpotDL: Starting query {query_index}/{total_queries}: {query}", xbmc.LOGINFO)
-                    try:
-                        process = subprocess.Popen([self.binary_path, 'download', query],
-                                         stdout=subprocess.PIPE,
-                                         stderr=subprocess.PIPE,
-                                         text=True,
-                                         encoding='utf-8',
-                                         errors='replace')
+                # Prepare command with all queries
+                command = [self.binary_path, 'download'] + queries
+                xbmc.log(f"SpotDL command: {command}", xbmc.LOGINFO)
+                
+                try:
+                    process = subprocess.Popen(command,
+                                     stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE,
+                                     text=True,
+                                     encoding='utf-8',
+                                     errors='replace')
+                    
+                    # Monitor directory while process is running
+                    while process.poll() is None:
+                        # Count files in current directory
+                        file_count = len([f for f in os.listdir(dir_path) if os.path.isfile(os.path.join(dir_path, f))])
+                        # Update notification
+                        dialog.notification('SpotDL',
+                                       f'Downloading {index}/{total_dirs}: {dir_entry["name"]} (files: {file_count})',
+                                       xbmcgui.NOTIFICATION_INFO, INDEFINITE_TIME)
+                        # Wait 2 seconds before next update
+                        xbmc.sleep(2000)
+                    
+                    # Get the output after process finishes
+                    stdout, stderr = process.communicate()
+                    
+                    if process.returncode != 0:
+                        raise subprocess.CalledProcessError(process.returncode, process.args, stdout, stderr)
+                    
+                    # Log stdout if there's any output
+                    if stdout:
+                        stdout_decoded = stdout.encode('utf-8', 'replace').decode('utf-8')
+                        xbmc.log(f"SpotDL stdout for {dir_entry['name']}:\n{stdout_decoded}", xbmc.LOGINFO)
+                        # Count results
+                        total_downloaded += stdout_decoded.count("Downloaded")
+                        total_skipped += stdout_decoded.count("Skipping")
+                        total_failed += stdout_decoded.count("Failed")
+                    # Log stderr if there's any output (might contain progress info)
+                    if stderr:
+                        xbmc.log(f"SpotDL stderr for {dir_entry['name']}:\n{stderr}".encode('utf-8', 'replace').decode('utf-8'), xbmc.LOGINFO)
                         
-                        # Monitor directory while process is running
-                        while process.poll() is None:
-                            # Count files in current directory
-                            file_count = len([f for f in os.listdir(dir_path) if os.path.isfile(os.path.join(dir_path, f))])
-                            # Update notification
-                            dialog.notification('SpotDL',
-                                           f'Downloading {index}/{total_dirs}: {dir_entry["name"]} (files: {file_count})',
-                                           xbmcgui.NOTIFICATION_INFO, INDEFINITE_TIME)
-                            # Wait 2 seconds before next update
-                            xbmc.sleep(5000)
-                        
-                        # Get the output after process finishes
-                        stdout, stderr = process.communicate()
-                        
-                        if process.returncode != 0:
-                            raise subprocess.CalledProcessError(process.returncode, process.args, stdout, stderr)
-                        
-                        # Log stdout if there's any output
-                        if stdout:
-                            stdout_decoded = stdout.encode('utf-8', 'replace').decode('utf-8')
-                            xbmc.log(f"SpotDL stdout for {query}:\n{stdout_decoded}", xbmc.LOGINFO)
-                            # Count results
-                            total_downloaded += stdout_decoded.count("Downloaded")
-                            total_skipped += stdout_decoded.count("Skipping")
-                            total_failed += stdout_decoded.count("Failed")
-                        # Log stderr if there's any output (might contain progress info)
-                        if stderr:
-                            xbmc.log(f"SpotDL stderr for {query}:\n{stderr}".encode('utf-8', 'replace').decode('utf-8'), xbmc.LOGINFO)
-                            
-                        xbmc.log(f"SpotDL: Finished query {query_index}/{total_queries}", xbmc.LOGINFO)
-                    except subprocess.CalledProcessError as e:
-                        # Log both stdout and stderr in case of error
-                        if e.stdout:
-                            xbmc.log(f"SpotDL stdout for {query}:\n{e.stdout}".encode('utf-8', 'replace').decode('utf-8'), xbmc.LOGERROR)
-                        if e.stderr:
-                            xbmc.log(f"SpotDL stderr for {query}:\n{e.stderr}".encode('utf-8', 'replace').decode('utf-8'), xbmc.LOGERROR)
-                        dialog.notification('SpotDL', f'Error in query {query_index}/{total_queries}', 
-                                         xbmcgui.NOTIFICATION_ERROR, 3000)
-                        continue
-                    except Exception as e:
-                        xbmc.log(f"SpotDL unexpected error for {query}: {str(e)}", xbmc.LOGERROR)
-                        dialog.notification('SpotDL', f'Unexpected error in query {query_index}/{total_queries}', 
-                                         xbmcgui.NOTIFICATION_ERROR, 3000)
-                        continue
+                    xbmc.log(f"SpotDL: Finished processing directory {dir_entry['name']}", xbmc.LOGINFO)
+                except subprocess.CalledProcessError as e:
+                    # Log both stdout and stderr in case of error
+                    if e.stdout:
+                        xbmc.log(f"SpotDL stdout for {dir_entry['name']}:\n{e.stdout}".encode('utf-8', 'replace').decode('utf-8'), xbmc.LOGERROR)
+                    if e.stderr:
+                        xbmc.log(f"SpotDL stderr for {dir_entry['name']}:\n{e.stderr}".encode('utf-8', 'replace').decode('utf-8'), xbmc.LOGERROR)
+                    dialog.notification('SpotDL', f'Error processing {dir_entry["name"]}', 
+                                     xbmcgui.NOTIFICATION_ERROR, 3000)
+                    continue
+                except Exception as e:
+                    xbmc.log(f"SpotDL unexpected error for {dir_entry['name']}: {str(e)}", xbmc.LOGERROR)
+                    dialog.notification('SpotDL', f'Unexpected error processing {dir_entry["name"]}', 
+                                     xbmcgui.NOTIFICATION_ERROR, 3000)
+                    continue
                 
                 xbmc.log(f"SpotDL: Finished all queries in {dir_path}", xbmc.LOGINFO)
             
