@@ -123,29 +123,42 @@ class SpotDLHandler:
                 
                 for query_index, query in enumerate(queries, 1):
                     xbmc.log(f"SpotDL: Starting query {query_index}/{total_queries}: {query}", xbmc.LOGINFO)
-                    dialog.notification('SpotDL', 
-                                     f'Downloading {index}/{total_dirs}: {dir_entry["name"]}', 
-                                     xbmcgui.NOTIFICATION_INFO, INDEFINITE_TIME)
-                    
                     try:
-                        result = subprocess.run([self.binary_path, 'download', query], 
-                                         check=True, 
-                                         stdout=subprocess.PIPE, 
+                        process = subprocess.Popen([self.binary_path, 'download', query],
+                                         stdout=subprocess.PIPE,
                                          stderr=subprocess.PIPE,
                                          text=True,
                                          encoding='utf-8',
                                          errors='replace')
+                        
+                        # Monitor directory while process is running
+                        while process.poll() is None:
+                            # Count files in current directory
+                            file_count = len([f for f in os.listdir(dir_path) if os.path.isfile(os.path.join(dir_path, f))])
+                            # Update notification
+                            dialog.notification('SpotDL',
+                                           f'Downloading {index}/{total_dirs}: {dir_entry["name"]}, files: {file_count}',
+                                           xbmcgui.NOTIFICATION_INFO, INDEFINITE_TIME)
+                            # Wait 2 seconds before next update
+                            xbmc.sleep(1000)
+                        
+                        # Get the output after process finishes
+                        stdout, stderr = process.communicate()
+                        
+                        if process.returncode != 0:
+                            raise subprocess.CalledProcessError(process.returncode, process.args, stdout, stderr)
+                        
                         # Log stdout if there's any output
-                        if result.stdout:
-                            stdout = result.stdout.encode('utf-8', 'replace').decode('utf-8')
-                            xbmc.log(f"SpotDL stdout for {query}:\n{stdout}", xbmc.LOGINFO)
+                        if stdout:
+                            stdout_decoded = stdout.encode('utf-8', 'replace').decode('utf-8')
+                            xbmc.log(f"SpotDL stdout for {query}:\n{stdout_decoded}", xbmc.LOGINFO)
                             # Count results
-                            total_downloaded += stdout.count("Downloaded")
-                            total_skipped += stdout.count("Skipping")
-                            total_failed += stdout.count("Failed")
+                            total_downloaded += stdout_decoded.count("Downloaded")
+                            total_skipped += stdout_decoded.count("Skipping")
+                            total_failed += stdout_decoded.count("Failed")
                         # Log stderr if there's any output (might contain progress info)
-                        if result.stderr:
-                            xbmc.log(f"SpotDL stderr for {query}:\n{result.stderr}".encode('utf-8', 'replace').decode('utf-8'), xbmc.LOGINFO)
+                        if stderr:
+                            xbmc.log(f"SpotDL stderr for {query}:\n{stderr}".encode('utf-8', 'replace').decode('utf-8'), xbmc.LOGINFO)
                             
                         xbmc.log(f"SpotDL: Finished query {query_index}/{total_queries}", xbmc.LOGINFO)
                     except subprocess.CalledProcessError as e:
@@ -155,6 +168,11 @@ class SpotDLHandler:
                         if e.stderr:
                             xbmc.log(f"SpotDL stderr for {query}:\n{e.stderr}".encode('utf-8', 'replace').decode('utf-8'), xbmc.LOGERROR)
                         dialog.notification('SpotDL', f'Error in query {query_index}/{total_queries}', 
+                                         xbmcgui.NOTIFICATION_ERROR, 3000)
+                        continue
+                    except Exception as e:
+                        xbmc.log(f"SpotDL unexpected error for {query}: {str(e)}", xbmc.LOGERROR)
+                        dialog.notification('SpotDL', f'Unexpected error in query {query_index}/{total_queries}', 
                                          xbmcgui.NOTIFICATION_ERROR, 3000)
                         continue
                 
