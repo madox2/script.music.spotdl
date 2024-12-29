@@ -46,15 +46,32 @@ def main():
                     xbmc.log(f"SpotDL parsed directories:\n{parsed_dirs}", xbmc.LOGINFO)
                     handler.directories = parsed_dirs
                     
+                    # Ensure base download path exists
+                    if not handler.download_path:
+                        raise ValueError("Download path is not set in settings")
+                    
+                    xbmc.log(f"Creating base download path: {handler.download_path}", xbmc.LOGINFO)
+                    os.makedirs(handler.download_path, exist_ok=True)
+                    
                     # Create directories in download folder
                     for dir_entry in parsed_dirs:
                         dir_path = os.path.join(handler.download_path, dir_entry['name'])
-                        if not xbmcvfs.exists(dir_path):
+                        xbmc.log(f"Full directory path to create: {dir_path}", xbmc.LOGINFO)
+                        if not os.path.exists(dir_path):
                             xbmc.log(f"Creating directory: {dir_path}", xbmc.LOGINFO)
-                            if not xbmcvfs.mkdirs(dir_path):
-                                raise ValueError(f"Failed to create directory: {dir_path}")
+                            os.makedirs(dir_path, exist_ok=True)
+                            xbmc.log(f"Created directory: {dir_path}", xbmc.LOGINFO)
                         else:
                             xbmc.log(f"Directory already exists: {dir_path}", xbmc.LOGINFO)
+                    
+                    # Start download process for all directories
+                    if handler.download():
+                        dialog.notification('SpotDL', 'All downloads completed', 
+                                          xbmcgui.NOTIFICATION_INFO, 3000)
+                    else:
+                        dialog.notification('SpotDL', 'Some downloads failed', 
+                                          xbmcgui.NOTIFICATION_ERROR, 3000)
+                        
             except Exception as e:
                 xbmc.log(f"SpotDL error reading config file: {str(e)}", xbmc.LOGERROR)
                 dialog.notification('SpotDL', 'Error reading config file', 

@@ -1,5 +1,6 @@
 import xbmcgui
 import xbmcvfs
+import xbmc
 import subprocess
 import sys
 import os
@@ -11,45 +12,55 @@ class SpotDLHandler:
         self.config_file = settings.getSetting('config_file')
         self.directories = []
         
-    def check_spotdl_installation(self):
-        """Check if spotDL is installed"""
-        try:
-            import spotdl
-            return True
-        except ImportError:
-            return False
-            
-    def install_spotdl(self):
-        """Install spotDL using pip"""
-        dialog = xbmcgui.Dialog()
-        try:
-            subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'spotdl'])
-            return True
-        except subprocess.CalledProcessError:
-            dialog.notification('SpotDL', 'Failed to install spotDL', 
-                              xbmcgui.NOTIFICATION_ERROR, 5000)
-            return False
-            
-    def download(self, url):
-        """Download music from Spotify URL"""
-        if not self.check_spotdl_installation():
-            if not self.install_spotdl():
-                return False
+        # Debug log the paths
+        xbmc.log(f"SpotDL download path: {self.download_path}", xbmc.LOGINFO)
+        xbmc.log(f"SpotDL config file: {self.config_file}", xbmc.LOGINFO)
+        
+    def download(self):
+        # It is assumed and intended that spotdl is already installed on the system
                 
         dialog = xbmcgui.Dialog()
         try:
-            # Ensure download directory exists
-            if not xbmcvfs.exists(self.download_path):
-                xbmcvfs.mkdirs(self.download_path)
-            
-            # TODO: Implement actual download using spotDL
-            # This is a placeholder for now
-            dialog.notification('SpotDL', 'Starting download...', 
-                              xbmcgui.NOTIFICATION_INFO, 2000)
+            for dir_entry in self.directories:
+                dir_path = os.path.join(self.download_path, dir_entry['name'])
+                query = dir_entry['query']
+                
+                xbmc.log(f"SpotDL: Starting download in {dir_path} with query: {query}", xbmc.LOGINFO)
+                dialog.notification('SpotDL', f'Downloading to {dir_entry["name"]}...', 
+                                  xbmcgui.NOTIFICATION_INFO, 2000)
+                
+                # Change to the directory and run spotdl
+                os.chdir(dir_path)
+                try:
+                    result = subprocess.run(['/home/m/Desktop/spotdl-4.2.10-linux', 'download', query], 
+                                 check=True, 
+                                 stdout=subprocess.PIPE, 
+                                 stderr=subprocess.PIPE,
+                                 text=True,
+                                 encoding='utf-8',
+                                 errors='replace')
+                    # Log stdout if there's any output
+                    if result.stdout:
+                        xbmc.log(f"SpotDL stdout in {dir_path}:\n{result.stdout}".encode('utf-8', 'replace').decode('utf-8'), xbmc.LOGINFO)
+                    # Log stderr if there's any output (might contain progress info)
+                    if result.stderr:
+                        xbmc.log(f"SpotDL stderr in {dir_path}:\n{result.stderr}".encode('utf-8', 'replace').decode('utf-8'), xbmc.LOGINFO)
+                except subprocess.CalledProcessError as e:
+                    # Log both stdout and stderr in case of error
+                    if e.stdout:
+                        xbmc.log(f"SpotDL stdout in {dir_path}:\n{e.stdout}".encode('utf-8', 'replace').decode('utf-8'), xbmc.LOGERROR)
+                    if e.stderr:
+                        xbmc.log(f"SpotDL stderr in {dir_path}:\n{e.stderr}".encode('utf-8', 'replace').decode('utf-8'), xbmc.LOGERROR)
+                    dialog.notification('SpotDL', f'Error in {dir_entry["name"]}', 
+                                      xbmcgui.NOTIFICATION_ERROR, 3000)
+                    continue
+                
+                xbmc.log(f"SpotDL: Finished download in {dir_path}", xbmc.LOGINFO)
             
             return True
             
         except Exception as e:
+            xbmc.log(f"SpotDL error: {str(e)}", xbmc.LOGERROR)
             dialog.notification('SpotDL', f'Download failed: {str(e)}', 
                               xbmcgui.NOTIFICATION_ERROR, 5000)
             return False
