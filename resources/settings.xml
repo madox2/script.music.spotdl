@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<settings>
+    <category label="General">
+        <setting label="Download Directory" type="folder" id="download_path" default="special://home/music"/>
+        <setting label="Audio Format" type="select" id="audio_format" values="mp3|flac|wav|m4a" default="mp3"/>
+        <setting label="Audio Quality" type="select" id="audio_quality" values="best|high|medium|low" default="best"/>
+    </category>
+</settings>
