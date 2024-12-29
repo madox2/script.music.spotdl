@@ -36,11 +36,15 @@ def main():
                     
                     parsed_dirs = []
                     for dir_entry in directories:
-                        if not isinstance(dir_entry, dict) or 'name' not in dir_entry or 'query' not in dir_entry:
-                            raise ValueError("Each directory entry must contain 'name' and 'query' keys")
+                        if not isinstance(dir_entry, dict) or 'name' not in dir_entry or 'queries' not in dir_entry:
+                            raise ValueError("Each directory entry must contain 'name' and 'queries' keys")
+                        if not isinstance(dir_entry['queries'], list):
+                            raise ValueError("'queries' must be an array")
+                        if not dir_entry['queries']:
+                            raise ValueError("'queries' array cannot be empty")
                         parsed_dirs.append({
                             'name': dir_entry['name'],
-                            'query': dir_entry['query']
+                            'queries': dir_entry['queries']
                         })
                     
                     xbmc.log(f"SpotDL parsed directories:\n{parsed_dirs}", xbmc.LOGINFO)

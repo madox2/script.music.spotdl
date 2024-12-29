@@ -109,40 +109,50 @@ class SpotDLHandler:
             
             for index, dir_entry in enumerate(self.directories, 1):
                 dir_path = os.path.join(self.download_path, dir_entry['name'])
-                query = dir_entry['query']
+                queries = dir_entry['queries']
+                total_queries = len(queries)
                 
-                xbmc.log(f"SpotDL: Starting download in {dir_path} with query: {query}", xbmc.LOGINFO)
-                dialog.notification('SpotDL', f'Downloading {dir_entry["name"]} ({index}/{total_dirs})', 
-                                  xbmcgui.NOTIFICATION_INFO, INDEFINITE_TIME)
+                xbmc.log(f"SpotDL: Processing directory {dir_path} with {total_queries} queries", xbmc.LOGINFO)
                 
-                # Change to the directory and run spotdl
+                # Change to the directory for all queries
                 os.chdir(dir_path)
-                try:
-                    result = subprocess.run([self.binary_path, 'download', query], 
-                                     check=True, 
-                                     stdout=subprocess.PIPE, 
-                                     stderr=subprocess.PIPE,
-                                     text=True,
-                                     encoding='utf-8',
-                                     errors='replace')
-                    # Log stdout if there's any output
-                    if result.stdout:
-                        xbmc.log(f"SpotDL stdout in {dir_path}:\n{result.stdout}".encode('utf-8', 'replace').decode('utf-8'), xbmc.LOGINFO)
-                    # Log stderr if there's any output (might contain progress info)
-                    if result.stderr:
-                        xbmc.log(f"SpotDL stderr in {dir_path}:\n{result.stderr}".encode('utf-8', 'replace').decode('utf-8'), xbmc.LOGINFO)
-                except subprocess.CalledProcessError as e:
-                    # Log both stdout and stderr in case of error
-                    if e.stdout:
-                        xbmc.log(f"SpotDL stdout in {dir_path}:\n{e.stdout}".encode('utf-8', 'replace').decode('utf-8'), xbmc.LOGERROR)
-                    if e.stderr:
-                        xbmc.log(f"SpotDL stderr in {dir_path}:\n{e.stderr}".encode('utf-8', 'replace').decode('utf-8'), xbmc.LOGERROR)
-                    dialog.notification('SpotDL', f'Error in {dir_entry["name"]}', 
-                                      xbmcgui.NOTIFICATION_ERROR, 3000)
-                    continue
                 
-                xbmc.log(f"SpotDL: Finished download in {dir_path}", xbmc.LOGINFO)
-                dialog.notification('SpotDL', f'Finished {dir_entry["name"]}', 
+                for query_index, query in enumerate(queries, 1):
+                    xbmc.log(f"SpotDL: Starting query {query_index}/{total_queries}: {query}", xbmc.LOGINFO)
+                    dialog.notification('SpotDL', 
+                                     f'Dir {index}/{total_dirs}: {dir_entry["name"]}\nQuery {query_index}/{total_queries}', 
+                                     xbmcgui.NOTIFICATION_INFO, INDEFINITE_TIME)
+                    
+                    try:
+                        result = subprocess.run([self.binary_path, 'download', query], 
+                                         check=True, 
+                                         stdout=subprocess.PIPE, 
+                                         stderr=subprocess.PIPE,
+                                         text=True,
+                                         encoding='utf-8',
+                                         errors='replace')
+                        # Log stdout if there's any output
+                        if result.stdout:
+                            xbmc.log(f"SpotDL stdout for {query}:\n{result.stdout}".encode('utf-8', 'replace').decode('utf-8'), xbmc.LOGINFO)
+                        # Log stderr if there's any output (might contain progress info)
+                        if result.stderr:
+                            xbmc.log(f"SpotDL stderr for {query}:\n{result.stderr}".encode('utf-8', 'replace').decode('utf-8'), xbmc.LOGINFO)
+                            
+                        xbmc.log(f"SpotDL: Finished query {query_index}/{total_queries}", xbmc.LOGINFO)
+                        dialog.notification('SpotDL', f'Query {query_index}/{total_queries} completed', 
+                                         xbmcgui.NOTIFICATION_INFO, 2000)
+                    except subprocess.CalledProcessError as e:
+                        # Log both stdout and stderr in case of error
+                        if e.stdout:
+                            xbmc.log(f"SpotDL stdout for {query}:\n{e.stdout}".encode('utf-8', 'replace').decode('utf-8'), xbmc.LOGERROR)
+                        if e.stderr:
+                            xbmc.log(f"SpotDL stderr for {query}:\n{e.stderr}".encode('utf-8', 'replace').decode('utf-8'), xbmc.LOGERROR)
+                        dialog.notification('SpotDL', f'Error in query {query_index}/{total_queries}', 
+                                         xbmcgui.NOTIFICATION_ERROR, 3000)
+                        continue
+                
+                xbmc.log(f"SpotDL: Finished all queries in {dir_path}", xbmc.LOGINFO)
+                dialog.notification('SpotDL', f'Directory {dir_entry["name"]} completed', 
                                   xbmcgui.NOTIFICATION_INFO, 2000)
             
             dialog.notification('SpotDL', f'All downloads completed', 
