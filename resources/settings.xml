@@ -4,6 +4,8 @@
         <setting label="Download Directory" type="folder" id="download_path" />
         <setting label="Config file (.yaml)" type="file" id="config_file" mask="*.yaml"/>
         <setting label="Install FFmpeg" type="bool" id="install_ffmpeg" default="true"/>
+    </category>
+    <category label="Advanced">
         <setting label="SpotDL Download URL" type="text" id="spotdl_url" default="https://github.com/spotDL/spotify-downloader/releases/download/v4.2.10/spotdl-4.2.10-linux"/>
     </category>
 </settings>
