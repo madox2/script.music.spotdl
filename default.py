@@ -69,13 +69,7 @@ def main():
                             xbmc.log(f"Directory already exists: {dir_path}", xbmc.LOGINFO)
                     
                     # Start download process for all directories
-                    if handler.download():
-                        dialog.notification('SpotDL', 'All downloads completed', 
-                                          xbmcgui.NOTIFICATION_INFO, 3000)
-                    else:
-                        dialog.notification('SpotDL', 'Some downloads failed', 
-                                          xbmcgui.NOTIFICATION_ERROR, 3000)
-                        
+                    handler.download()
             except Exception as e:
                 xbmc.log(f"SpotDL error reading config file: {str(e)}", xbmc.LOGERROR)
                 dialog.notification('SpotDL', 'Error reading config file', 

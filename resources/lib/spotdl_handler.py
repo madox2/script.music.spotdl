@@ -106,6 +106,10 @@ class SpotDLHandler:
             self.install_spotdl()
 
             total_dirs = len(self.directories)
+            # Initialize counters for the summary
+            total_downloaded = 0
+            total_skipped = 0
+            total_failed = 0
             
             for index, dir_entry in enumerate(self.directories, 1):
                 dir_path = os.path.join(self.download_path, dir_entry['name'])
@@ -120,7 +124,7 @@ class SpotDLHandler:
                 for query_index, query in enumerate(queries, 1):
                     xbmc.log(f"SpotDL: Starting query {query_index}/{total_queries}: {query}", xbmc.LOGINFO)
                     dialog.notification('SpotDL', 
-                                     f'Dir {index}/{total_dirs}: {dir_entry["name"]}\nQuery {query_index}/{total_queries}', 
+                                     f'Downloading {index}/{total_dirs}: {dir_entry["name"]}', 
                                      xbmcgui.NOTIFICATION_INFO, INDEFINITE_TIME)
                     
                     try:
@@ -133,14 +137,17 @@ class SpotDLHandler:
                                          errors='replace')
                         # Log stdout if there's any output
                         if result.stdout:
-                            xbmc.log(f"SpotDL stdout for {query}:\n{result.stdout}".encode('utf-8', 'replace').decode('utf-8'), xbmc.LOGINFO)
+                            stdout = result.stdout.encode('utf-8', 'replace').decode('utf-8')
+                            xbmc.log(f"SpotDL stdout for {query}:\n{stdout}", xbmc.LOGINFO)
+                            # Count results
+                            total_downloaded += stdout.count("Downloaded")
+                            total_skipped += stdout.count("Skipping")
+                            total_failed += stdout.count("Failed")
                         # Log stderr if there's any output (might contain progress info)
                         if result.stderr:
                             xbmc.log(f"SpotDL stderr for {query}:\n{result.stderr}".encode('utf-8', 'replace').decode('utf-8'), xbmc.LOGINFO)
                             
                         xbmc.log(f"SpotDL: Finished query {query_index}/{total_queries}", xbmc.LOGINFO)
-                        dialog.notification('SpotDL', f'Query {query_index}/{total_queries} completed', 
-                                         xbmcgui.NOTIFICATION_INFO, 2000)
                     except subprocess.CalledProcessError as e:
                         # Log both stdout and stderr in case of error
                         if e.stdout:
@@ -152,11 +159,14 @@ class SpotDLHandler:
                         continue
                 
                 xbmc.log(f"SpotDL: Finished all queries in {dir_path}", xbmc.LOGINFO)
-                dialog.notification('SpotDL', f'Directory {dir_entry["name"]} completed', 
-                                  xbmcgui.NOTIFICATION_INFO, 2000)
             
-            dialog.notification('SpotDL', f'All downloads completed', 
-                              xbmcgui.NOTIFICATION_INFO, 3000)
+            # Log the final summary
+            summary = f"(d: {total_downloaded}, s: {total_skipped}, f: {total_failed})"
+            xbmc.log(f"SpotDL download summary: {summary}", xbmc.LOGINFO)
+            
+            # Show summary notification
+            dialog.notification('SpotDL', f'Download completed {summary}', 
+                              xbmcgui.NOTIFICATION_INFO, 5000)
             return True
             
         except Exception as e:
