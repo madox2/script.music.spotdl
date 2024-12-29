@@ -5,7 +5,7 @@ import subprocess
 import sys
 import os
 
-INDEFINITE_TIME = 1000 * 60 * 60 # hour is big enough
+INDEFINITE_TIME = 1000 * 60 * 60 * 24 # day is big enough
 
 class SpotDLHandler:
     def __init__(self, settings):
@@ -137,10 +137,10 @@ class SpotDLHandler:
                             file_count = len([f for f in os.listdir(dir_path) if os.path.isfile(os.path.join(dir_path, f))])
                             # Update notification
                             dialog.notification('SpotDL',
-                                           f'Downloading {index}/{total_dirs}: {dir_entry["name"]}, files: {file_count}',
+                                           f'Downloading {index}/{total_dirs}: {dir_entry["name"]} (files: {file_count})',
                                            xbmcgui.NOTIFICATION_INFO, INDEFINITE_TIME)
                             # Wait 2 seconds before next update
-                            xbmc.sleep(1000)
+                            xbmc.sleep(5000)
                         
                         # Get the output after process finishes
                         stdout, stderr = process.communicate()
@@ -179,12 +179,27 @@ class SpotDLHandler:
                 xbmc.log(f"SpotDL: Finished all queries in {dir_path}", xbmc.LOGINFO)
             
             # Log the final summary
-            summary = f"(d: {total_downloaded}, s: {total_skipped}, f: {total_failed})"
+            summary = f"Downloaded: {total_downloaded}\nSkipped: {total_skipped}\nFailed: {total_failed}"
             xbmc.log(f"SpotDL download summary: {summary}", xbmc.LOGINFO)
             
-            # Show summary notification
-            dialog.notification('SpotDL', f'Download completed {summary}', 
-                              xbmcgui.NOTIFICATION_INFO, 5000)
+            # Show updating library notification
+            dialog.notification('SpotDL', f'Updating music library...', 
+                              xbmcgui.NOTIFICATION_INFO, INDEFINITE_TIME)
+            
+            # Update Kodi's music library
+            xbmc.executebuiltin('UpdateLibrary(music)')
+            
+            # Wait for library update to complete (monitor onScanFinished event)
+            monitor = xbmc.Monitor()
+            while not monitor.abortRequested():
+                if monitor.waitForAbort(1):
+                    break
+                # Check if library scan is still running
+                if not xbmc.getCondVisibility('Library.IsScanningMusic'):
+                    break
+            
+            dialog.notification('SpotDL', f'Library updated', xbmcgui.NOTIFICATION_INFO, 2000)
+            dialog.ok('SpotDL', f'Synchronization finished\n{summary}')
             return True
             
         except Exception as e:
