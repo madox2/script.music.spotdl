@@ -36,3 +36,15 @@ directories:
 - Kodi 19 or higher
 - Internet connection
 - Sufficient storage space for downloads
+
+## Development
+
+### Creating a New Release
+
+To create a new release:
+
+1. Update the version number in `addon.xml`
+2. Create and push a new tag:
+   ```bash
+   git tag v1.0.0  # Use appropriate version number
+   git push origin v1.0.0

@@ -1,0 +1,44 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set env
+      run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+      
+    - name: Create addon zip
+      run: |
+        cd ..
+        zip -r script.music.spotdl-${RELEASE_VERSION#v}.zip script.music.spotdl/ -x "script.music.spotdl/.git/*" "script.music.spotdl/.github/*" "script.music.spotdl/.gitignore"
+        mv script.music.spotdl-${RELEASE_VERSION#v}.zip script.music.spotdl/
+        cd script.music.spotdl
+        
+    - name: Create Release
+      id: create_release
+      uses: softprops/action-gh-release@v1
+      with:
+        name: Release ${{ env.RELEASE_VERSION }}
+        draft: false
+        prerelease: false
+        files: script.music.spotdl-${{ env.RELEASE_VERSION#v }}.zip
+        body: |
+          SpotDL Kodi Addon Release ${{ env.RELEASE_VERSION }}
+          
+          This release contains:
+          - Addon zip file ready to install in Kodi
+          
+          To install:
+          1. Download the zip file
+          2. In Kodi, go to Add-ons > Install from zip file
+          3. Select the downloaded zip file
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
