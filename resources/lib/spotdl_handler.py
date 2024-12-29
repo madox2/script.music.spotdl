@@ -8,8 +8,8 @@ class SpotDLHandler:
     def __init__(self, settings):
         self.settings = settings
         self.download_path = settings.getSetting('download_path')
-        self.audio_format = settings.getSetting('audio_format')
-        self.audio_quality = settings.getSetting('audio_quality')
+        self.config_file = settings.getSetting('config_file')
+        self.directories = []
         
     def check_spotdl_installation(self):
         """Check if spotDL is installed"""
