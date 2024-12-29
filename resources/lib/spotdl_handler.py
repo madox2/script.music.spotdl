@@ -46,7 +46,37 @@ class SpotDLHandler:
                     f.write(response.content)
                 os.chmod(binary_path, 0o755)  # Make executable
                 xbmc.log(f"Successfully downloaded and made executable: {binary_path}", xbmc.LOGINFO)
-                dialog.notification('SpotDL', 'SpotDL successfully downloaded', 
+                
+                # Download ffmpeg if enabled in settings
+                if self.settings.getSettingBool('install_ffmpeg'):
+                    dialog.notification('SpotDL', 'Downloading ffmpeg...', 
+                                      xbmcgui.NOTIFICATION_INFO, INDEFINITE_TIME)
+                    try:
+                        result = subprocess.run([binary_path, '--download-ffmpeg'],
+                                             check=True,
+                                             stdout=subprocess.PIPE,
+                                             stderr=subprocess.PIPE,
+                                             text=True,
+                                             encoding='utf-8',
+                                             errors='replace')
+                        if result.stdout:
+                            xbmc.log(f"FFmpeg download stdout:\n{result.stdout}", xbmc.LOGINFO)
+                        if result.stderr:
+                            xbmc.log(f"FFmpeg download stderr:\n{result.stderr}", xbmc.LOGINFO)
+                        xbmc.log("Successfully downloaded ffmpeg", xbmc.LOGINFO)
+                        dialog.notification('SpotDL', 'FFmpeg successfully downloaded', 
+                                          xbmcgui.NOTIFICATION_INFO, 2000)
+                    except subprocess.CalledProcessError as e:
+                        error_msg = f"Failed to download ffmpeg: {str(e)}"
+                        if e.stdout:
+                            xbmc.log(f"FFmpeg download stdout:\n{e.stdout}", xbmc.LOGERROR)
+                        if e.stderr:
+                            xbmc.log(f"FFmpeg download stderr:\n{e.stderr}", xbmc.LOGERROR)
+                        raise ValueError(error_msg)
+                else:
+                    xbmc.log("FFmpeg installation skipped (disabled in settings)", xbmc.LOGINFO)
+
+                dialog.notification('SpotDL', 'Setup completed successfully', 
                                   xbmcgui.NOTIFICATION_INFO, 2000)
             except requests.exceptions.RequestException as e:
                 error_msg = f"Failed to download SpotDL binary: {str(e)}"
