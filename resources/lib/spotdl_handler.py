@@ -197,37 +197,29 @@ class SpotDLHandler:
                 xbmc.log(f"SpotDL: Finished all queries in {dir_path}", xbmc.LOGINFO)
                 
                 if self.settings.getSettingBool('create_playlists'):
-                    # Create playlist for this directory
+                    # Create smart playlist for this directory
                     try:
                         playlist_name = dir_entry['name']
-                        music_files = []
                         
-                        # Scan for music files
-                        for root, _, files in os.walk(dir_path):
-                            for file in files:
-                                if file.lower().endswith(('.mp3', '.m4a', '.flac', '.ogg', '.wav')):
-                                    # Store full path to the music file
-                                    full_path = os.path.join(root, file)
-                                    music_files.append(full_path)
+                        # Get Kodi userdata path for playlists
+                        playlists_dir = os.path.join(xbmcvfs.translatePath('special://userdata'), 'playlists', 'music')
+                        os.makedirs(playlists_dir, exist_ok=True)
                         
-                        if music_files:
-                            # Get Kodi userdata path for playlists
-                            playlists_dir = os.path.join(xbmcvfs.translatePath('special://userdata'), 'playlists', 'music')
-                            os.makedirs(playlists_dir, exist_ok=True)
-                            
-                            # Create playlist file in Kodi playlists directory
-                            playlist_path = os.path.join(playlists_dir, f"{playlist_name}.m3u")
-                            
-                            with open(playlist_path, 'w', encoding='utf-8') as f:
-                                f.write('#EXTM3U\n')
-                                for music_file in sorted(music_files):
-                                    # Convert local path to Kodi path
-                                    kodi_path = music_file.replace(self.download_path, 'special://home/music')
-                                    f.write(f'{kodi_path}\n')
-                            
-                            xbmc.log(f"Created playlist: {playlist_path}", xbmc.LOGINFO)
-                        else:
-                            xbmc.log(f"No music files found in: {dir_path}", xbmc.LOGWARNING)
+                        # Create smart playlist file
+                        playlist_path = os.path.join(playlists_dir, f"{playlist_name}.xsp")
+                        
+                        # Create smart playlist XML content
+                        playlist_content = f"""<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<smartplaylist type="songs">
+    <name>{playlist_name}</name>
+    <match>all</match>
+    <rule field="path" operator="startswith">{dir_path}</rule>
+</smartplaylist>"""
+                        
+                        with open(playlist_path, 'w', encoding='utf-8') as f:
+                            f.write(playlist_content)
+                        
+                        xbmc.log(f"Created smart playlist: {playlist_path}", xbmc.LOGINFO)
                     except Exception as e:
                         xbmc.log(f"Error creating playlist for {dir_entry['name']}: {str(e)}", xbmc.LOGWARNING)
             
