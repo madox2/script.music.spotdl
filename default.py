@@ -34,27 +34,27 @@ def main():
         try:
             with open(config_file, 'r') as f:
                 config_data = yaml.safe_load(f)
-                if not isinstance(config_data, dict) or 'directories' not in config_data:
-                    raise ValueError("Config file must contain 'directories' key")
+                if not isinstance(config_data, dict) or 'playlists' not in config_data:
+                    raise ValueError("Config file must contain 'playlists' key")
                 
-                directories = config_data['directories']
-                if not isinstance(directories, list):
-                    raise ValueError("'directories' must be an array")
+                playlists = config_data['playlists']
+                if not isinstance(playlists, list):
+                    raise ValueError("'playlists' must be an array")
                 
-                parsed_dirs = []
-                for dir_entry in directories:
-                    if not isinstance(dir_entry, dict) or 'name' not in dir_entry or 'queries' not in dir_entry:
+                parsed_playlists = []
+                for playlist_entry in playlists:
+                    if not isinstance(playlist_entry, dict) or 'name' not in playlist_entry or 'queries' not in playlist_entry:
                         raise ValueError("Each directory entry must contain 'name' and 'queries' keys")
-                    if not isinstance(dir_entry['queries'], list):
+                    if not isinstance(playlist_entry['queries'], list):
                         raise ValueError("'queries' must be an array")
-                    if not dir_entry['queries']:
+                    if not playlist_entry['queries']:
                         raise ValueError("'queries' array cannot be empty")
-                    parsed_dirs.append({
-                        'name': dir_entry['name'],
-                        'queries': dir_entry['queries']
+                    parsed_playlists.append({
+                        'name': playlist_entry['name'],
+                        'queries': playlist_entry['queries']
                     })
                 
-                xbmc.log(f"SpotDL parsed directories:\n{parsed_dirs}", xbmc.LOGINFO)
+                xbmc.log(f"SpotDL parsed playlists:\n{parsed_playlists}", xbmc.LOGINFO)
                 
                 # Ensure base download path exists
                 if not handler.download_path:
@@ -64,17 +64,17 @@ def main():
                 os.makedirs(handler.download_path, exist_ok=True)
 
                 # select playlists
-                options = ["All"] + [d['name'] for d in parsed_dirs]
+                options = ["All"] + [d['name'] for d in parsed_playlists]
                 choice = dialog.select("SpotDL - Choose Playlists", options)
                 if choice == -1:  # User cancelled
                     return False
                 if choice != 0:
-                    parsed_dirs = [parsed_dirs[choice - 1]]
+                    parsed_playlists = [parsed_playlists[choice - 1]]
 
-                handler.directories = parsed_dirs
+                handler.playlists = parsed_playlists
                 
-                # Create directories in download folder
-                for dir_entry in parsed_dirs:
+                # Create playlists in download folder
+                for dir_entry in parsed_playlists:
                     dir_path = os.path.join(handler.download_path, dir_entry['name'])
                     xbmc.log(f"Full directory path to create: {dir_path}", xbmc.LOGINFO)
                     if not os.path.exists(dir_path):
@@ -84,7 +84,7 @@ def main():
                     else:
                         xbmc.log(f"Directory already exists: {dir_path}", xbmc.LOGINFO)
                 
-                # Start download process for all directories
+                # Start download process for all playlists
                 handler.download()
         except Exception as e:
             xbmc.log(f"SpotDL error reading config file: {str(e)}", xbmc.LOGERROR)

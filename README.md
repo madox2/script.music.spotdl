@@ -22,7 +22,7 @@ Config file (.yaml): /path/to/your/playlists.yaml
 Config example:
 
 ```yaml
-directories:
+playlists:
   - name: "My Favorite Songs"
     queries:
       - "https://open.spotify.com/playlist/YOUR_PLAYLIST_ID"

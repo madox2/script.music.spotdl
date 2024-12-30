@@ -13,7 +13,7 @@ class SpotDLHandler:
         self.download_path = settings.getSetting('download_path')
         self.config_file = settings.getSetting('config_file')
         self.spotdl_url = settings.getSetting('spotdl_url')
-        self.directories = []
+        self.playlists = []
         self.sync_mode = True
         binary_name = os.path.basename(self.spotdl_url)
         temp_dir = xbmcvfs.translatePath('special://temp')
@@ -100,21 +100,21 @@ class SpotDLHandler:
                 raise ValueError("Download path is not set in settings")
             xbmc.log(f"Using download path: {self.download_path}", xbmc.LOGINFO)
             
-            # Verify we have directories to process
-            if not self.directories:
-                raise ValueError("No directories configured in config file")
+            # Verify we have playlists to process
+            if not self.playlists:
+                raise ValueError("No playlists configured in config file")
 
             self.install_spotdl()
 
-            total_dirs = len(self.directories)
+            total_playlists = len(self.playlists)
             # Initialize counters for the summary
             total_downloaded = 0
             total_skipped = 0
             total_failed = 0
             
-            for index, dir_entry in enumerate(self.directories, 1):
-                dir_path = os.path.join(self.download_path, dir_entry['name'])
-                queries = dir_entry['queries']
+            for index, playlist in enumerate(self.playlists, 1):
+                dir_path = os.path.join(self.download_path, playlist['name'])
+                queries = playlist['queries']
                 xbmc.log(f"SpotDL: Processing directory {dir_path} with {len(queries)} queries", xbmc.LOGINFO)
                 
                 # Change to the directory for processing
@@ -141,7 +141,7 @@ class SpotDLHandler:
                         file_count = len([f for f in os.listdir(dir_path) if os.path.isfile(os.path.join(dir_path, f)) and not f.endswith('.spotdl')])
                         # Update notification
                         dialog.notification('SpotDL',
-                                       f'Sync {index}/{total_dirs}: {dir_entry["name"]} (files: {file_count})',
+                                       f'Sync {index}/{total_playlists}: {playlist["name"]} (files: {file_count})',
                                        xbmcgui.NOTIFICATION_INFO, INDEFINITE_TIME)
                         # Wait 2 seconds before next update
                         xbmc.sleep(2000)
@@ -155,16 +155,16 @@ class SpotDLHandler:
                     # Log stdout if there's any output
                     if stdout:
                         stdout_decoded = stdout.encode('utf-8', 'replace').decode('utf-8')
-                        xbmc.log(f"SpotDL stdout for {dir_entry['name']}:\n{stdout_decoded}", xbmc.LOGINFO)
+                        xbmc.log(f"SpotDL stdout for {playlist['name']}:\n{stdout_decoded}", xbmc.LOGINFO)
                         # Count results
                         total_downloaded += stdout_decoded.count("Downloaded")
                         total_skipped += stdout_decoded.count("Skipping")
                         total_failed += stdout_decoded.count("Failed")
                     # Log stderr if there's any output (might contain progress info)
                     if stderr:
-                        xbmc.log(f"SpotDL stderr for {dir_entry['name']}:\n{stderr}".encode('utf-8', 'replace').decode('utf-8'), xbmc.LOGINFO)
+                        xbmc.log(f"SpotDL stderr for {playlist['name']}:\n{stderr}".encode('utf-8', 'replace').decode('utf-8'), xbmc.LOGINFO)
                         
-                    xbmc.log(f"SpotDL: Finished processing directory {dir_entry['name']}", xbmc.LOGINFO)
+                    xbmc.log(f"SpotDL: Finished processing directory {playlist['name']}", xbmc.LOGINFO)
                     
                     if not self.sync_mode:
                         # Run cleanup sync to remove obsolete files
@@ -179,23 +179,23 @@ class SpotDLHandler:
                                                           errors='replace',
                                                           check=True)
                             if cleanup_process.stdout:
-                                xbmc.log(f"SpotDL cleanup stdout for {dir_entry['name']}:\n{cleanup_process.stdout}", xbmc.LOGINFO)
+                                xbmc.log(f"SpotDL cleanup stdout for {playlist['name']}:\n{cleanup_process.stdout}", xbmc.LOGINFO)
                             if cleanup_process.stderr:
-                                xbmc.log(f"SpotDL cleanup stderr for {dir_entry['name']}:\n{cleanup_process.stderr}", xbmc.LOGINFO)
+                                xbmc.log(f"SpotDL cleanup stderr for {playlist['name']}:\n{cleanup_process.stderr}", xbmc.LOGINFO)
                         except subprocess.CalledProcessError as ce:
-                            xbmc.log(f"SpotDL cleanup failed for {dir_entry['name']}: {str(ce)}", xbmc.LOGWARNING)
+                            xbmc.log(f"SpotDL cleanup failed for {playlist['name']}: {str(ce)}", xbmc.LOGWARNING)
                 except subprocess.CalledProcessError as e:
                     # Log both stdout and stderr in case of error
                     if e.stdout:
-                        xbmc.log(f"SpotDL stdout for {dir_entry['name']}:\n{e.stdout}".encode('utf-8', 'replace').decode('utf-8'), xbmc.LOGERROR)
+                        xbmc.log(f"SpotDL stdout for {playlist['name']}:\n{e.stdout}".encode('utf-8', 'replace').decode('utf-8'), xbmc.LOGERROR)
                     if e.stderr:
-                        xbmc.log(f"SpotDL stderr for {dir_entry['name']}:\n{e.stderr}".encode('utf-8', 'replace').decode('utf-8'), xbmc.LOGERROR)
-                    dialog.notification('SpotDL', f'Error processing {dir_entry["name"]}', 
+                        xbmc.log(f"SpotDL stderr for {playlist['name']}:\n{e.stderr}".encode('utf-8', 'replace').decode('utf-8'), xbmc.LOGERROR)
+                    dialog.notification('SpotDL', f'Error processing {playlist["name"]}', 
                                      xbmcgui.NOTIFICATION_ERROR, 3000)
                     continue
                 except Exception as e:
-                    xbmc.log(f"SpotDL unexpected error for {dir_entry['name']}: {str(e)}", xbmc.LOGERROR)
-                    dialog.notification('SpotDL', f'Unexpected error processing {dir_entry["name"]}', 
+                    xbmc.log(f"SpotDL unexpected error for {playlist['name']}: {str(e)}", xbmc.LOGERROR)
+                    dialog.notification('SpotDL', f'Unexpected error processing {playlist["name"]}', 
                                      xbmcgui.NOTIFICATION_ERROR, 3000)
                     continue
                 
@@ -204,7 +204,7 @@ class SpotDLHandler:
                 if self.settings.getSettingBool('create_playlists'):
                     # Create smart playlist for this directory
                     try:
-                        playlist_name = dir_entry['name']
+                        playlist_name = playlist['name']
                         
                         # Get Kodi userdata path for playlists
                         playlists_dir = os.path.join(xbmcvfs.translatePath('special://userdata'), 'playlists', 'music')
@@ -226,12 +226,12 @@ class SpotDLHandler:
                         
                         xbmc.log(f"Created smart playlist: {playlist_path}", xbmc.LOGINFO)
                     except Exception as e:
-                        xbmc.log(f"Error creating playlist for {dir_entry['name']}: {str(e)}", xbmc.LOGWARNING)
+                        xbmc.log(f"Error creating playlist for {playlist['name']}: {str(e)}", xbmc.LOGWARNING)
             
-            # Count total files in all processed directories
+            # Count total files in all processed playlists
             total_files = 0
-            for dir_entry in self.directories:
-                dir_path = os.path.join(self.download_path, dir_entry['name'])
+            for playlist in self.playlists:
+                dir_path = os.path.join(self.download_path, playlist['name'])
                 if os.path.exists(dir_path):
                     total_files += len([f for f in os.listdir(dir_path) 
                                       if os.path.isfile(os.path.join(dir_path, f)) 
