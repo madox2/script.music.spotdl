@@ -14,6 +14,7 @@ class SpotDLHandler:
         self.config_file = settings.getSetting('config_file')
         self.spotdl_url = settings.getSetting('spotdl_url')
         self.directories = []
+        self.sync_mode = True
         binary_name = os.path.basename(self.spotdl_url)
         temp_dir = xbmcvfs.translatePath('special://temp')
         self.binary_path = os.path.join(temp_dir, binary_name)
@@ -121,6 +122,9 @@ class SpotDLHandler:
                 
                 # Prepare command with all queries
                 command = [self.binary_path, 'sync'] + queries + ['--save-file', 'playlist.spotdl']
+                if self.sync_mode and os.path.exists('playlist.spotdl'):
+                    command = [self.binary_path, 'sync', 'playlist.spotdl']
+
                 xbmc.log(f"SpotDL command: {command}", xbmc.LOGINFO)
                 
                 try:
@@ -162,23 +166,24 @@ class SpotDLHandler:
                         
                     xbmc.log(f"SpotDL: Finished processing directory {dir_entry['name']}", xbmc.LOGINFO)
                     
-                    # Run cleanup sync to remove obsolete files
-                    cleanup_command = [self.binary_path, 'sync', 'playlist.spotdl']
-                    xbmc.log(f"SpotDL cleanup command: {cleanup_command}", xbmc.LOGINFO)
-                    try:
-                        cleanup_process = subprocess.run(cleanup_command,
-                                                      stdout=subprocess.PIPE,
-                                                      stderr=subprocess.PIPE,
-                                                      text=True,
-                                                      encoding='utf-8',
-                                                      errors='replace',
-                                                      check=True)
-                        if cleanup_process.stdout:
-                            xbmc.log(f"SpotDL cleanup stdout for {dir_entry['name']}:\n{cleanup_process.stdout}", xbmc.LOGINFO)
-                        if cleanup_process.stderr:
-                            xbmc.log(f"SpotDL cleanup stderr for {dir_entry['name']}:\n{cleanup_process.stderr}", xbmc.LOGINFO)
-                    except subprocess.CalledProcessError as ce:
-                        xbmc.log(f"SpotDL cleanup failed for {dir_entry['name']}: {str(ce)}", xbmc.LOGWARNING)
+                    if not self.sync_mode:
+                        # Run cleanup sync to remove obsolete files
+                        cleanup_command = [self.binary_path, 'sync', 'playlist.spotdl']
+                        xbmc.log(f"SpotDL cleanup command: {cleanup_command}", xbmc.LOGINFO)
+                        try:
+                            cleanup_process = subprocess.run(cleanup_command,
+                                                          stdout=subprocess.PIPE,
+                                                          stderr=subprocess.PIPE,
+                                                          text=True,
+                                                          encoding='utf-8',
+                                                          errors='replace',
+                                                          check=True)
+                            if cleanup_process.stdout:
+                                xbmc.log(f"SpotDL cleanup stdout for {dir_entry['name']}:\n{cleanup_process.stdout}", xbmc.LOGINFO)
+                            if cleanup_process.stderr:
+                                xbmc.log(f"SpotDL cleanup stderr for {dir_entry['name']}:\n{cleanup_process.stderr}", xbmc.LOGINFO)
+                        except subprocess.CalledProcessError as ce:
+                            xbmc.log(f"SpotDL cleanup failed for {dir_entry['name']}: {str(ce)}", xbmc.LOGWARNING)
                 except subprocess.CalledProcessError as e:
                     # Log both stdout and stderr in case of error
                     if e.stdout:
